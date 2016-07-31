@@ -5,6 +5,7 @@
        version={{ git_branch }}
        dest={{ project_path }}
        accept_hostkey=yes
+       force=yes
   when: setup_git_repo is defined and setup_git_repo
   tags: git
 
