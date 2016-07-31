@@ -6,8 +6,15 @@
 
 - name: Make manage.py executable
   file:
-    path= "{{ project_path }}"/manage.py
-    mode= 0755
+    path={{ project_path }}/manage.py
+    mode=0755
+
+
+- name: Create DB directory
+  file:
+    path={{ project_path }}/db
+    state=directory
+    mode=664
 
 - name: Run the Django syncdb command
   django_manage:
