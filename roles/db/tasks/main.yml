@@ -1,44 +1,51 @@
 ---
-
-- name: Add the PostgreSQL public GPG key to the apt repo
-  apt_key: url=https://www.postgresql.org/media/keys/ACCC4CF8.asc
-           state=present
-
-- name: Add PostgreSQL to the sources list
-  apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main'
-                  update_cache={{ update_apt_cache }}
-                  state=present
-
-- name: Install PostgreSQL
-  apt: name={{ item }} update_cache={{ update_apt_cache }} state=installed
+- name: install mysql server
+  apt:
+    name={{ item }}
+    update_cache={{ update_apt_cache }}
+    state=installed
   with_items:
-    - postgresql
-    - postgresql-contrib
-    - python-psycopg2
+    - mysql-server-5.6
+    - libmysqlclient-dev
+    - python-dev
   tags: packages
 
-- name: Ensure the PostgreSQL service is running
-  service: name=postgresql state=started enabled=yes
+
+- name: Ensure MySQL is running
+  service:
+    name=mysql
+    state=started
+    enabled=yes
+
+- name: Install mysql connector for ansible
+  pip:
+    name=MySQL-python
+    state=present
+
+- name: update mysql root password for all root accounts
+  mysql_user: 
+    name=root
+    password={{ mysql_root_password }}
+    check_implicit_admin=true
+
+- name: copy .my.cnf file with root password credentials
+  template: src=my.cnf.j2 dest=/root/.my.cnf 
+
+- name: delete anonymous MySQL server user for localhost
+  action: mysql_user user="" state="absent"
+
+- name: remove the MySQL test database
+  action: mysql_db db=test state=absent
 
 - name: Ensure database is created
-  become_user: postgres
-  postgresql_db: name={{ db_name }}
-                 encoding='UTF-8'
-                 lc_collate='en_US.UTF-8'
-                 lc_ctype='en_US.UTF-8'
-                 template='template0'
-                 state=present
+  mysql_db:
+    name={{ db_name }}
+    encoding=utf8
+    state=present
 
-- name: Ensure user has access to the database
-  become_user: postgres
-  postgresql_user: db={{ db_name }}
-                   name={{ db_user }}
-                   password={{ db_password }}
-                   priv=ALL
-                   state=present
-
-- name: Ensure user does not have unnecessary privileges
-  become_user: postgres
-  postgresql_user: name={{ db_user }}
-                   role_attr_flags=NOSUPERUSER,NOCREATEDB
-                   state=present
+- name: Ensure user has access to database
+  mysql_user:
+    name={{ db_user }}
+    password={{ db_password }}
+    priv={{ db_name }}.*:ALL
+    state=present
